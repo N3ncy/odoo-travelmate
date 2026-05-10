@@ -9,11 +9,13 @@ import {
   ChevronLeft,
   Filter,
   SlidersHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tripService } from '@/services/api';
 import { useAuthStore } from '@/store';
 import type { Trip } from '@/types';
+import { AICityExplorer } from '@/components/AICityExplorer';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -248,6 +250,9 @@ export function CitySearchPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [addingToTrip, setAddingToTrip] = useState(false);
 
+  // AI Explorer modal
+  const [explorerCity, setExplorerCity] = useState<City | null>(null);
+
   useEffect(() => {
     loadTrips();
   }, []);
@@ -288,6 +293,15 @@ export function CitySearchPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* AI City Explorer Modal */}
+      {explorerCity && (
+        <AICityExplorer
+          cityName={explorerCity.name}
+          stateName={explorerCity.state}
+          coverImage={explorerCity.image}
+          onClose={() => setExplorerCity(null)}
+        />
+      )}
       {/* Header */}
       <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -425,14 +439,23 @@ export function CitySearchPage() {
                   ))}
                 </div>
 
-                {/* Add to Trip Button */}
-                <button
-                  onClick={() => setSelectedCity(city)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add to Trip
-                </button>
+              {/* Add to Trip Button + AI Explore */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setExplorerCity(city)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-xl font-medium text-sm hover:shadow-md transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Explore with AI
+                  </button>
+                  <button
+                    onClick={() => setSelectedCity(city)}
+                    className="w-11 flex items-center justify-center bg-gray-100 hover:bg-emerald-100 text-gray-600 hover:text-emerald-700 rounded-xl transition-colors"
+                    title="Add to Trip"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

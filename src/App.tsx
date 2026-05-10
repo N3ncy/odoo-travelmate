@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +38,7 @@ import { AIPlannerPage } from '@/pages/AIPlannerPage';
 import { CitySearchPage } from '@/pages/CitySearchPage';
 import { ActivitySearchPage } from '@/pages/ActivitySearchPage';
 import { TripNotesPage } from '@/pages/TripNotesPage';
+import { AITripAssistant } from '@/components/AITripAssistant';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -207,6 +208,8 @@ export default function App() {
           }
         />
       </Routes>
+      {/* Global AI Chat Widget - visible on all pages */}
+      <AITripAssistant />
     </Router>
   );
 }
