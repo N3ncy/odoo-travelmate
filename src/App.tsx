@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Navbar } from '@/components/layout/Navbar';
+import { BottomNav } from '@/components/layout/BottomNav';
 
 // Phase-1 Pages
 import { HomePage } from '@/pages/HomePage';
@@ -46,7 +47,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen min-w-[375px] flex items-center justify-center bg-gray-50 overflow-x-hidden">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500">Loading Traveloop...</p>
@@ -64,7 +65,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen min-w-[375px] bg-gray-50 overflow-x-hidden flex">
+      <Navbar />
+      <div className="flex-1 w-full md:pl-64 pb-16 md:pb-0 transition-all duration-300">
+        {children}
+      </div>
+      <BottomNav />
+    </div>
+  );
 }
 
 // Onboarding Route

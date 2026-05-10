@@ -100,21 +100,61 @@ async function callGemini(
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
+const MASTER_SYSTEM_PROMPT = `
+You are Traveloop AI, an India-first, AI-powered travel planning assistant.
+Your primary job is to provide real, actionable, INR-based, India-specific travel intelligence.
+
+RULES:
+1. All prices MUST be in INR (₹) — never USD or vague terms like "affordable".
+2. ALWAYS name real places (e.g., "Cafe Coffee Day, MG Road, Bengaluru" not "a local cafe").
+3. NEVER recommend places outside India unless explicitly asked.
+4. Budget tiers (strict):
+   - Budget: ₹500-1500/day per person
+   - Mid-range: ₹1500-4000/day per person
+   - Luxury: ₹4000+/day per person
+5. Transport: mention IRCTC/trains for long distances, local buses for budget, Ola/Uber for city.
+6. ALWAYS include emergency numbers in city guides.
+7. Monsoon warnings: flag destinations that are risky Jun-Sep.
+8. If real-time data is needed (hotel prices, train availability), estimate accurately.
+9. Return STRICT JSON when requested — no markdown wrappers (\`\`\`json), no preamble.
+`;
+
+export interface PageContext {
+  page: string;
+  tripName?: string;
+  destination?: string;
+  userPrefs?: any;
+}
+
 // ─── Smart AI call: OpenRouter first, Gemini fallback ──────────────────────
 async function callAI(
   prompt: string,
   systemPrompt?: string,
   useSearch = false,
-  maxTokens = 3000
+  maxTokens = 3000,
+  context?: PageContext
 ): Promise<string> {
   const orKey = getOpenRouterKey();
   const gemKey = getGeminiKey();
+
+  let enrichedSystem = `${MASTER_SYSTEM_PROMPT}\n\n${systemPrompt || ''}`;
+  
+  if (context) {
+    enrichedSystem += `
+CURRENT CONTEXT:
+- Page: ${context.page}
+- Trip: ${context.tripName ?? 'none'}
+- Destination: ${context.destination ?? 'unknown'}
+- User preferences: ${context.userPrefs ? JSON.stringify(context.userPrefs) : 'none'}
+- Date: ${new Date().toLocaleDateString('en-IN')}
+`;
+  }
 
   if (orKey) {
     try {
       return await callOpenRouter(
         [{ role: 'user', content: prompt }],
-        systemPrompt,
+        enrichedSystem,
         maxTokens
       );
     } catch (e) {
@@ -123,7 +163,7 @@ async function callAI(
   }
 
   if (gemKey) {
-    const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+    const fullPrompt = `${enrichedSystem}\n\n${prompt}`;
     return await callGemini(fullPrompt, useSearch, maxTokens);
   }
 
@@ -465,38 +505,25 @@ export async function chatWithTraveloopAI(
   tripContext?: string,
   currentPage?: string
 ): Promise<string> {
-  const system = `You are Traveloop AI, India's smartest travel planning assistant. 
-You specialize in Indian destinations, travel hacks, budget tips, and creating personalized itineraries.
-${tripContext ? `Current trip context: ${tripContext}` : ''}
-${currentPage ? `User is currently on: ${currentPage}` : ''}
+  const context: PageContext = {
+    page: currentPage || 'Global Chat',
+    tripName: tripContext,
+  };
 
+  const system = `You are Traveloop AI's interactive chat assistant.
 Guidelines:
 - Be friendly, enthusiastic, and conversational (like a knowledgeable Indian travel friend)
 - Give specific, actionable advice with real places, prices in INR, and practical tips
 - For budget questions, always give a range (budget/mid-range/luxury)
 - Use emojis naturally to make responses engaging
-- If user asks about a city, proactively suggest hidden gems and local food
-- Keep responses concise (under 250 words) unless detailed itinerary is requested
-- Always mention the best time to visit when discussing destinations`;
+- Keep responses concise (under 150 words) unless detailed itinerary is requested
+- Always mention the best time to visit when discussing destinations
+- Format responses cleanly with brief bullet points where necessary.`;
 
-  // Use OpenRouter for chat (streaming-compatible), Gemini as fallback
-  const orKey = getOpenRouterKey();
-  if (orKey) {
-    try {
-      return await callOpenRouter(messages, system, 1500);
-    } catch (e) {
-      console.warn('[Chat] OpenRouter failed, using Gemini:', e);
-    }
-  }
+  // We serialize the messages array into a prompt string for callAI.
+  const prompt = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
 
-  const gemKey = getGeminiKey();
-  if (gemKey) {
-    const fullMessages = [{ role: 'system' as const, content: system }, ...messages];
-    const prompt = fullMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-    return callGemini(prompt, false, 1500);
-  }
-
-  return "⚠️ AI assistant not configured. Add your OpenRouter or Gemini API key to the .env file to enable AI features.";
+  return await callAI(prompt, system, false, 1500, context);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
